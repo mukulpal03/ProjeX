@@ -14,4 +14,15 @@ app.use(cors());
 app.use("/api/v1/healthcheck", healthCheckRouter);
 app.use("/api/v1/users", authRoutes);
 
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+
+  res.status(statusCode).json({
+    statusCode,
+    message: err.message || "Internal Server Error",
+    errors: err.errors || [],
+    success: false,
+  });
+});
+
 export default app;
