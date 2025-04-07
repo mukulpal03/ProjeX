@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../utils/async-handler.js";
 import {
   loginUser,
+  logoutUser,
   registerUser,
   verifyUser,
 } from "../controllers/auth.controllers.js";
@@ -21,10 +22,6 @@ router.route("/verify/:token").post(asyncHandler(verifyUser));
 router
   .route("/login")
   .post(userLoginValidator(), validate, asyncHandler(loginUser));
-
-
-router.get("/test", isLoggedIn, (req, res) => {
-    res.send("hello")
-})
+router.route("/logout").post(isLoggedIn, asyncHandler(logoutUser));
 
 export default router;

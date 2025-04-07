@@ -5,6 +5,25 @@ import { sendMail, emailVerificationMailGenContent } from "../utils/mail.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
+async function generateAccessAndRefreshToken(userId) {
+  try {
+    const user = await User.findById(userId);
+
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new ApiError(
+      401,
+      "Error While generating access Token or Refresh Token",
+    );
+  }
+}
+
 const registerUser = async (req, res, next) => {
   const { username, email, password, fullname } = req.body;
 
@@ -93,33 +112,38 @@ const loginUser = async (req, res) => {
     return next(new ApiError(401, "Incorrect email or password"));
   }
 
-  const accessToken = jwt.sign(
-    {
-      id: user._id,
-    },
-    process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id,
   );
 
-  const refreshToken = jwt.sign(
-    {
-      id: user._id,
-    },
-    process.env.REFRESH_TOKEN_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
-  );
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+  };
 
-  user.refreshToken = refreshToken;
-
-  await user.save();
-
-  res.cookie("accessToken", accessToken);
-  res.cookie("refreshToken", refreshToken);
-
-  res.status(200).json(new ApiResponse(200, "User logged in successfully"));
+  res
+    .status(200)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(
+      new ApiResponse(200, "User logged in successfully", {
+        accessToken,
+        refreshToken,
+      }),
+    );
 };
 
-const logoutUser = async (req, res) => {};
+const logoutUser = async (req, res) => {
+  await User.findByIdAndUpdate(req.user.id, { $set: { refreshToken: null } });
+
+  res
+    .status(200)
+    .clearCookie("accessToken")
+    .clearCookie("refreshToken")
+    .json(new ApiResponse(200, "User logged out successfully"));
+};
+
+const refreshAccessToken = async (req, res) => {};
 
 const resendEmailVerification = async (req, res) => {};
 
@@ -129,4 +153,4 @@ const resetPassword = async (req, res) => {};
 
 const userProfile = async (req, res) => {};
 
-export { registerUser, verifyUser, loginUser };
+export { registerUser, verifyUser, loginUser, logoutUser };

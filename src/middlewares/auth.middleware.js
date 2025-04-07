@@ -3,41 +3,29 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
 
 const isLoggedIn = async (req, res, next) => {
-  const { accessToken, refreshToken } = req.cookies;
+  try {
+    const token =
+      req.cookies?.accessToken ||
+      req.header("Authorization")?.replace("bearer ", "");
 
-  if (!accessToken) {
-    if (!refreshToken) {
-      return next(new ApiError(401, "Unauthorized Access"));
+    if (!token) {
+      return next(new ApiError(401, "Unauthorized access"));
     }
 
-    const refreshDecoded = jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET,
+    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+    const user = await User.findById(decodedToken._id).select(
+      "-password -refreshToken",
     );
 
-    try {
-      const user = await User.findById(refreshDecoded.id);
+    if (!user) {
+      return next(new ApiError(401, "Unauthorized access"));
+    }
 
-      if (!user) {
-        return next(new ApiError(401, "Unauthorized Access"));
-      }
-
-      const accessToken = jwt.sign(
-        {
-          id: user._id,
-        },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY },
-      );
-
-      const refreshToken = jwt.sign(
-        {
-          id: user._id,
-        },
-        process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: process.env.REFRESH_TOKEN_EXPIRY },
-      );
-    } catch (err) {}
+    req.user = user;
+    next();
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid access token");
   }
 };
 
