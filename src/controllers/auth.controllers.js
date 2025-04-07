@@ -93,7 +93,7 @@ const verifyUser = async (req, res, next) => {
   res.status(200).json(new ApiResponse(200, "User verified successfully"));
 };
 
-const loginUser = async (req, res) => {
+const loginUser = async (req, res, next) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email });
@@ -133,17 +133,60 @@ const loginUser = async (req, res) => {
     );
 };
 
-const logoutUser = async (req, res) => {
+const logoutUser = async (req, res, next) => {
   await User.findByIdAndUpdate(req.user.id, { $set: { refreshToken: null } });
+
+  const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+  };
 
   res
     .status(200)
-    .clearCookie("accessToken")
-    .clearCookie("refreshToken")
+    .clearCookie("accessToken", cookieOptions)
+    .clearCookie("refreshToken", cookieOptions)
     .json(new ApiResponse(200, "User logged out successfully"));
 };
 
-const refreshAccessToken = async (req, res) => {};
+const refreshAccessToken = async (req, res, next) => {
+  const token = req.cookies?.refreshToken || req.body.refreshToken;
+
+  if (!token) {
+    return next(new ApiError(401, "Invalid refresh Token"));
+  }
+
+  const decodedToken = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+
+  const user = await User.findById(decodedToken?._id).select("-password");
+
+  if (!user) {
+    return next(new ApiError(401, "Invalid refresh Token"));
+  }
+
+  if (token !== user?.refreshToken) {
+    return next(new ApiError(401, "Invalid refresh Token"));
+  }
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  const { accessToken, newRefreshToken } =
+    await generateAccessAndRefereshTokens(user._id);
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", newRefreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { accessToken, refreshToken: newRefreshToken },
+        "Access token refreshed",
+      ),
+    );
+};
 
 const resendEmailVerification = async (req, res) => {};
 
