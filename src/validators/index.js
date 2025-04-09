@@ -47,4 +47,28 @@ const userLoginValidator = () => {
   ];
 };
 
-export { userRegistrationValidator, userLoginValidator };
+const forgotPassValidator = () => {
+  return [
+    body("email")
+      .trim()
+      .notEmpty()
+      .withMessage("Email is required")
+      .isEmail()
+      .withMessage("Email is invalid"),
+  ];
+};
+
+const resetPassValidator = () => {
+  return [
+    body("password")
+      .trim()
+      .notEmpty()
+      .withMessage("Password is required")
+      .isLength({ min: 6 })
+      .withMessage("Password should be atleast 6 characters")
+      .isLength({ max: 20 })
+      .withMessage("Password cannot exceed 20 Characters"),
+  ];
+};
+
+export { userRegistrationValidator, userLoginValidator, forgotPassValidator, resetPassValidator };

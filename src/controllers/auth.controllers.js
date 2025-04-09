@@ -1,7 +1,11 @@
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
-import { sendMail, emailVerificationMailGenContent } from "../utils/mail.js";
+import {
+  sendMail,
+  emailVerificationMailGenContent,
+  forgotPasswordMailGenContent,
+} from "../utils/mail.js";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 
@@ -102,10 +106,6 @@ const loginUser = async (req, res, next) => {
     return next(new ApiError(401, "Incorrect email or password"));
   }
 
-  if (!user.isEmailVerified) {
-    return next(new ApiError(401, "Please verify your email"));
-  }
-
   const passwordMatch = await user.isPasswordCorrect(password);
 
   if (!passwordMatch) {
@@ -188,12 +188,108 @@ const refreshAccessToken = async (req, res, next) => {
     );
 };
 
-const resendEmailVerification = async (req, res) => {};
+const resendEmailVerification = async (req, res, next) => {
+  const user = req.user;
 
-const forgotPasswordReq = async (req, res) => {};
+  if (!user) {
+    return next(new ApiError(401, "Unauthorized access"));
+  }
 
-const resetPassword = async (req, res) => {};
+  const { hashedToken, unHashedToken, tokenExpiry } =
+    user.generateTemporaryToken();
 
-const userProfile = async (req, res) => {};
+  user.emailVerificationToken = hashedToken;
+  user.emailVerificationExpiry = tokenExpiry;
 
-export { registerUser, verifyUser, loginUser, logoutUser };
+  await user.save();
+
+  await sendMail({
+    email: user.email,
+    subject: "Email Verification",
+    mailGenContent: emailVerificationMailGenContent(
+      user.username,
+      `${process.env.BASE_URL}/api/v1/users/verify/${unHashedToken}`,
+    ),
+  });
+};
+
+const forgotPasswordReq = async (req, res, next) => {
+  const { email } = req.body;
+
+  const user = await User.findOne({ email }).select("-password -refreshToken");
+
+  if (!user) {
+    return next(new ApiError(401, "User not found"));
+  }
+
+  const { hashedToken, unHashedToken, tokenExpiry } =
+    user.generateTemporaryToken();
+
+  user.forgotPasswordToken = hashedToken;
+  user.forgotPasswordExpiry = tokenExpiry;
+
+  await user.save();
+
+  await sendMail({
+    email: user.email,
+    subject: "Reset Password",
+    mailGenContent: forgotPasswordMailGenContent(
+      user.username,
+      `${process.env.BASE_URL}/api/v1/users/reset-password/${unHashedToken}`,
+    ),
+  });
+
+  res.status(200).json(new ApiResponse(200, "Password reset email sent!"));
+};
+
+const resetPassword = async (req, res, next) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  if (!token) {
+    return next(new ApiError(401, "Cannot reset password"));
+  }
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  const user = await User.findOne({
+    forgotPasswordToken: hashedToken,
+    forgotPasswordExpiry: {
+      $gt: Date.now(),
+    },
+  });
+
+  if (!user) {
+    return next(new ApiError(401, "Token expired"));
+  }
+
+  user.password = password;
+  user.forgotPasswordToken = null;
+  user.forgotPasswordExpiry = null;
+
+  await user.save();
+
+  res.status(201).json(new ApiResponse(201, "Password reset successfully"));
+};
+
+const userProfile = async (req, res) => {
+  const user = req.user;
+
+  res.status(200).json(
+    new ApiResponse(200, `Welcome ${user.fullname}`, {
+      user,
+    }),
+  );
+};
+
+export {
+  registerUser,
+  verifyUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  userProfile,
+  resendEmailVerification,
+  forgotPasswordReq,
+  resetPassword
+};
