@@ -3,6 +3,7 @@ import healthCheckRouter from "./routes/healthcheck.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import projectRoutes from "./routes/project.routes.js";
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(cors());
 
 app.use("/api/v1/healthcheck", healthCheckRouter);
 app.use("/api/v1/users", authRoutes);
+app.use("/api/v1/projects", projectRoutes);
 
 app.use((err, req, res, next) => {
   const statusCode = err.statusCode || 500;

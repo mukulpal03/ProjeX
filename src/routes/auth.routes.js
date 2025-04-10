@@ -17,7 +17,7 @@ import {
   userLoginValidator,
   forgotPassValidator,
   resetPassValidator,
-} from "../validators/index.js";
+} from "../validators/user.validator.js";
 import isLoggedIn from "../middlewares/auth.middleware.js";
 
 const router = Router();

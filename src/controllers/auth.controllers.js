@@ -282,6 +282,10 @@ const userProfile = async (req, res) => {
   );
 };
 
+const changeCurrentPassword = async (req, res, next) => {
+
+}
+
 export {
   registerUser,
   verifyUser,
@@ -291,5 +295,6 @@ export {
   userProfile,
   resendEmailVerification,
   forgotPasswordReq,
-  resetPassword
+  resetPassword,
+  changeCurrentPassword
 };
