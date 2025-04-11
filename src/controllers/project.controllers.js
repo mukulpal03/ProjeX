@@ -130,6 +130,15 @@ const deleteProject = async (req, res, next) => {
 const getProjectById = async (req, res, next) => {
   const { projectId } = req.params;
 
+  const member = await ProjectMember.findOne({
+    user: req.user._id,
+    project: projectId,
+  });
+
+  if (!member) {
+    return next(new ApiError(401, "You are not a part of this project"));
+  }
+
   const project = await Project.findById(projectId);
 
   if (!project) {
@@ -148,8 +157,6 @@ const getProjects = async (req, res) => {
 
   const projects = await Project.find({ _id: { $in: projectIds } });
 
-  console.log(projects);
-
   return res
     .status(200)
     .json(new ApiResponse(200, projects, "All your projects"));
@@ -158,17 +165,11 @@ const getProjects = async (req, res) => {
 const getProjectMembers = async (req, res) => {
   const { projectId } = req.params;
 
-  const members = await ProjectMember.find({ project: projectId }).select(
-    "user",
-  );
+  const projectMembers = await ProjectMember.find({ project: projectId })
+    .select("user role")
+    .populate("user", "fullname");
 
-  const memberIds = members.map((member) => member.user);
-
-  const Members = await User.find({ _id: { $in: memberIds } }).select(
-    "fullname",
-  );
-
-  res.status(200).json(new ApiResponse(200, Members, "All members"));
+  res.status(200).json(new ApiResponse(200, projectMembers, "All members"));
 };
 
 const updateProject = async (req, res, next) => {
