@@ -2,6 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import { ProjectMember } from "./projectmember.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { ProjectNote } from "./note.model.js";
+import { Task } from "./task.model.js";
 
 const projectSchema = new Schema(
   {
@@ -27,9 +28,10 @@ projectSchema.post("findOneAndDelete", async (project, next) => {
   try {
     await ProjectMember.deleteMany({ project: project._id });
     await ProjectNote.deleteMany({ project: project._id });
+    await Task.deleteMany({ project: project._id });
     next();
   } catch (error) {
-    throw new ApiError(400, "Error while deleting members of project");
+    throw new ApiError(400, "Some Error occurred");
   }
 });
 

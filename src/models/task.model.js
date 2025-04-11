@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { SubTask } from "./subtask.model.js";
 
 const taskSchema = new Schema(
   {
@@ -43,5 +44,14 @@ const taskSchema = new Schema(
   },
   { timestamps: true },
 );
+
+taskSchema.post("findOneAndDelete", async (task, next) => {
+  try {
+    await SubTask.deleteMany({ task: task._id });
+    next();
+  } catch (error) {
+    throw new ApiError(400, "Error while deleting subtasks of project");
+  }
+});
 
 export const Task = mongoose.model("Task", taskSchema);
