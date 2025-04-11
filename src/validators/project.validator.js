@@ -12,7 +12,7 @@ const addMemberValidator = () => {
   ];
 };
 
-const createProjectValidator = () => {
+const ProjectValidator = () => {
   return [
     body("name")
       .trim()
@@ -30,4 +30,4 @@ const createProjectValidator = () => {
   ];
 };
 
-export { addMemberValidator, createProjectValidator };
+export { addMemberValidator, ProjectValidator };

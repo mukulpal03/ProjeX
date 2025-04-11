@@ -5,8 +5,33 @@ import { ApiResponse } from "../utils/api-response.js";
 import { ProjectMember } from "../models/projectmember.model.js";
 import { Project } from "../models/project.model.js";
 
+async function checkIfAdmin(userId, projectId) {
+  try {
+    const admin = await ProjectMember.findOne({
+      user: userId,
+      project: projectId,
+      role: UserRolesEnum.ADMIN,
+    });
+
+    if (!admin) {
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    throw new ApiError(401, error);
+  }
+}
+
 const addMemberToProject = async (req, res, next) => {
-  const { email, role = UserRolesEnum.MEMBER, projectId } = req.body;
+  const { projectId } = req.params;
+  const { email, role = UserRolesEnum.MEMBER } = req.body;
+
+  const isAdmin = await checkIfAdmin(req.user._id, projectId);
+
+  if (!isAdmin) {
+    return next(new ApiError(401, "Permission denied"));
+  }
 
   const user = await User.findOne({ email }).select("-password -refreshToken");
 
@@ -61,36 +86,146 @@ const createProject = async (req, res, next) => {
     return next(new ApiError(400, "Error while adding you as an admin"));
   }
 
-  res.status(201).json(new ApiResponse(201, "Project created successfully", project))
+  res
+    .status(201)
+    .json(new ApiResponse(201, "Project created successfully", project));
+};
+
+const deleteMember = async (req, res, next) => {
+  const { memberId, projectId } = req.params;
+
+  if (!memberId) {
+    return next(new ApiError(400, "Invalid member id"));
+  }
+
+  const isAdmin = await checkIfAdmin(req.user._id, projectId);
+
+  if (!isAdmin) {
+    return next(new ApiError(401, "Permission denied"));
+  }
+
+  await ProjectMember.findByIdAndDelete(memberId);
+
+  res.status(200).json(new ApiResponse(200, "Member deleted successfully"));
+};
+
+const deleteProject = async (req, res, next) => {
+  const { projectId } = req.params;
+
+  if (!projectId) {
+    return next(new ApiError(404, "Invalid project id"));
+  }
+
+  const isAdmin = await checkIfAdmin(req.user._id, projectId);
+
+  if (!isAdmin) {
+    return next(new ApiError(401, "Permission denied"));
+  }
+
+  await Project.findByIdAndDelete(projectId);
+
+  res.status(200).json(new ApiResponse(200, "Project deleted successfully"));
+};
+
+const getProjectById = async (req, res, next) => {
+  const { projectId } = req.params;
+
+  const project = await Project.findById(projectId);
+
+  if (!project) {
+    return next(new ApiError(404, "No project found"));
+  }
+
+  res.status(200).json(new ApiResponse(200, project));
 };
 
 const getProjects = async (req, res) => {
-  // get all projects
-};
+  const memberProjects = await ProjectMember.find({
+    user: req.user._id,
+  }).select("project");
 
-const getProjectById = async (req, res) => {
-  // get id from params
-  // find project based on id
-};
+  const projectIds = memberProjects.map((project) => project.project);
 
-const updateProject = async (req, res) => {
-  // update project
-};
+  const projects = await Project.find({ _id: { $in: projectIds } });
 
-const deleteProject = async (req, res) => {
-  // delete project
+  console.log(projects);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, projects, "All your projects"));
 };
 
 const getProjectMembers = async (req, res) => {
-  // get project members
+  const { projectId } = req.params;
+
+  const members = await ProjectMember.find({ project: projectId }).select(
+    "user",
+  );
+
+  const memberIds = members.map((member) => member.user);
+
+  const Members = await User.find({ _id: { $in: memberIds } }).select(
+    "fullname",
+  );
+
+  res.status(200).json(new ApiResponse(200, Members, "All members"));
 };
 
-const deleteMember = async (req, res) => {
-  // delete member from project
+const updateProject = async (req, res, next) => {
+  const { name, description } = req.body;
+  const { projectId } = req.params;
+
+  const isAdmin = await checkIfAdmin(req.user._id, projectId);
+
+  if (!isAdmin) {
+    return next(new ApiError(401, "Permission denied"));
+  }
+
+  const project = await Project.findByIdAndUpdate(projectId, {
+    $set: {
+      name,
+      description,
+    },
+  });
+
+  if (!project) {
+    return next(new ApiError(400, "Error while updating project"));
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, project, "Project updated successfully"));
 };
 
-const updateMemberRole = async (req, res) => {
-  // update member role
+const updateMemberRole = async (req, res, next) => {
+  const { role } = req.body;
+  const { memberId, projectId } = req.params;
+
+  const isAdmin = await checkIfAdmin(req.user._id, projectId);
+
+  if (!isAdmin) {
+    return next(new ApiError(401, "Permission denied"));
+  }
+
+  const member = await ProjectMember.findByIdAndUpdate(
+    memberId,
+    {
+      $set: {
+        role,
+      },
+    },
+    {
+      new: true,
+    },
+  );
+
+  if (!member) {
+    return next(new ApiError(400, "Error while updating role"));
+  }
+
+  res
+    .status(201)
+    .json(new ApiResponse(201, member, "Role updated successfully"));
 };
 
 export {
