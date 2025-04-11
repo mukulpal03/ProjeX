@@ -4,6 +4,7 @@ import authRoutes from "./routes/auth.routes.js";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import projectRoutes from "./routes/project.routes.js";
+import noteRoutes from "./routes/note.routes.js";
 
 const app = express();
 
@@ -15,8 +16,9 @@ app.use(cors());
 app.use("/api/v1/healthcheck", healthCheckRouter);
 app.use("/api/v1/users", authRoutes);
 app.use("/api/v1/projects", projectRoutes);
+app.use("/api/v1/projects/:projectId/notes", noteRoutes);
 
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
   const statusCode = err.statusCode || 500;
 
   res.status(statusCode).json({
