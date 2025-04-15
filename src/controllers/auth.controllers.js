@@ -42,6 +42,10 @@ const registerUser = async (req, res, next) => {
     email,
     password,
     fullname,
+    avatar: {
+      url: req.file?.path,
+      filename: req.file?.filename,
+    },
   });
 
   if (!user) {
@@ -282,9 +286,7 @@ const userProfile = async (req, res) => {
   );
 };
 
-const changeCurrentPassword = async (req, res, next) => {
-
-}
+const changeCurrentPassword = async (req, res, next) => {};
 
 export {
   registerUser,
@@ -296,5 +298,5 @@ export {
   resendEmailVerification,
   forgotPasswordReq,
   resetPassword,
-  changeCurrentPassword
+  changeCurrentPassword,
 };

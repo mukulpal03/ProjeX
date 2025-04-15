@@ -5,33 +5,9 @@ import { ApiResponse } from "../utils/api-response.js";
 import { ProjectMember } from "../models/projectmember.model.js";
 import { Project } from "../models/project.model.js";
 
-async function checkIfAdmin(userId, projectId) {
-  try {
-    const admin = await ProjectMember.findOne({
-      user: userId,
-      project: projectId,
-      role: UserRolesEnum.ADMIN,
-    });
-
-    if (!admin) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    throw new ApiError(401, error);
-  }
-}
-
 const addMemberToProject = async (req, res, next) => {
   const { projectId } = req.params;
   const { email, role = UserRolesEnum.MEMBER } = req.body;
-
-  const isAdmin = await checkIfAdmin(req.user._id, projectId);
-
-  if (!isAdmin) {
-    return next(new ApiError(401, "Permission denied"));
-  }
 
   const user = await User.findOne({ email }).select("-password -refreshToken");
 
@@ -98,12 +74,6 @@ const deleteMember = async (req, res, next) => {
     return next(new ApiError(400, "Invalid member id"));
   }
 
-  const isAdmin = await checkIfAdmin(req.user._id, projectId);
-
-  if (!isAdmin) {
-    return next(new ApiError(401, "Permission denied"));
-  }
-
   await ProjectMember.findByIdAndDelete(memberId);
 
   res.status(200).json(new ApiResponse(200, "Member deleted successfully"));
@@ -116,12 +86,6 @@ const deleteProject = async (req, res, next) => {
     return next(new ApiError(404, "Invalid project id"));
   }
 
-  const isAdmin = await checkIfAdmin(req.user._id, projectId);
-
-  if (!isAdmin) {
-    return next(new ApiError(401, "Permission denied"));
-  }
-
   await Project.findByIdAndDelete(projectId);
 
   res.status(200).json(new ApiResponse(200, "Project deleted successfully"));
@@ -129,15 +93,6 @@ const deleteProject = async (req, res, next) => {
 
 const getProjectById = async (req, res, next) => {
   const { projectId } = req.params;
-
-  const member = await ProjectMember.findOne({
-    user: req.user._id,
-    project: projectId,
-  });
-
-  if (!member) {
-    return next(new ApiError(401, "You are not a part of this project"));
-  }
 
   const project = await Project.findById(projectId);
 
@@ -176,12 +131,6 @@ const updateProject = async (req, res, next) => {
   const { name, description } = req.body;
   const { projectId } = req.params;
 
-  const isAdmin = await checkIfAdmin(req.user._id, projectId);
-
-  if (!isAdmin) {
-    return next(new ApiError(401, "Permission denied"));
-  }
-
   const project = await Project.findByIdAndUpdate(projectId, {
     $set: {
       name,
@@ -201,12 +150,6 @@ const updateProject = async (req, res, next) => {
 const updateMemberRole = async (req, res, next) => {
   const { role } = req.body;
   const { memberId, projectId } = req.params;
-
-  const isAdmin = await checkIfAdmin(req.user._id, projectId);
-
-  if (!isAdmin) {
-    return next(new ApiError(401, "Permission denied"));
-  }
 
   const member = await ProjectMember.findByIdAndUpdate(
     memberId,

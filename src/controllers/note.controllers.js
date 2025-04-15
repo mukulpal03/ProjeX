@@ -1,54 +1,10 @@
 import { ProjectNote } from "../models/note.model.js";
-import { ProjectMember } from "../models/projectmember.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
-
-async function checkIfMember(userId, projectId) {
-  try {
-    const member = await ProjectMember.findOne({
-      user: userId,
-      project: projectId,
-    });
-
-    if (!member) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    throw new ApiError(401, error);
-  }
-}
-
-async function checkIfAdmin(userId, projectId) {
-  try {
-    const admin = await ProjectMember.findOne({
-      user: userId,
-      project: projectId,
-      role: UserRolesEnum.ADMIN,
-    });
-
-    if (!admin) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    throw new ApiError(401, error);
-  }
-}
 
 const createNote = async (req, res, next) => {
   const { projectId } = req.params;
   const { content } = req.body;
-
-  const isAdmin = await checkIfAdmin(req.user._id, projectId);
-
-  if (!isAdmin) {
-    return next(
-      new ApiError(401, "Permission denied, only admin can create a note"),
-    );
-  }
 
   const note = await ProjectNote.create({
     project: projectId,
@@ -66,12 +22,6 @@ const createNote = async (req, res, next) => {
 const getNotes = async (req, res, next) => {
   const { projectId } = req.params;
 
-  const isMember = await checkIfMember(req.user._id, projectId);
-
-  if (!isMember) {
-    return next(new ApiError(401, "You are not a part of this project"));
-  }
-
   const notes = await ProjectNote.find({
     project: projectId,
   }).select("content");
@@ -86,12 +36,6 @@ const getNotes = async (req, res, next) => {
 const getNoteById = async (req, res, next) => {
   const { projectId, noteId } = req.params;
 
-  const isMember = await checkIfMember(req.user._id, projectId);
-
-  if (!isMember) {
-    return next(new ApiError(401, "You are not a part of this project"));
-  }
-
   const note = await ProjectNote.findById(noteId).select("content");
 
   if (!note) {
@@ -103,15 +47,7 @@ const getNoteById = async (req, res, next) => {
 
 const updateNote = async (req, res, next) => {
   const { projectId, noteId } = req.params;
-  const { content } = req.params;
-
-  const isAdmin = await checkIfAdmin(req.user._id, projectId);
-
-  if (!isAdmin) {
-    return next(
-      new ApiError(401, "Permission denied, only admin can create a note"),
-    );
-  }
+  const { content } = req.body;
 
   const note = await ProjectNote.findByIdAndUpdate(
     noteId,
@@ -134,14 +70,6 @@ const updateNote = async (req, res, next) => {
 
 const deleteNote = async (req, res, next) => {
   const { projectId, noteId } = req.params;
-
-  const isAdmin = await checkIfAdmin(req.user._id, projectId);
-
-  if (!isAdmin) {
-    return next(
-      new ApiError(401, "Permission denied, only admin can create a note"),
-    );
-  }
 
   const note = await ProjectNote.findByIdAndDelete(noteId);
 

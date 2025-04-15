@@ -19,12 +19,18 @@ import {
   resetPassValidator,
 } from "../validators/user.validator.js";
 import isLoggedIn from "../middlewares/auth.middleware.js";
+import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
 router
   .route("/register")
-  .post(userRegistrationValidator(), validate, asyncHandler(registerUser));
+  .post(
+    upload.single("avatar"),
+    userRegistrationValidator(),
+    validate,
+    asyncHandler(registerUser),
+  );
 router.route("/verify/:token").post(asyncHandler(verifyUser));
 router
   .route("/login")

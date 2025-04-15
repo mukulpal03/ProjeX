@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { SubTask } from "./subtask.model.js";
+import { AvailableTaskStatus, TaskStatusEnum } from "../utils/constants.js";
 
 const taskSchema = new Schema(
   {
@@ -28,7 +29,7 @@ const taskSchema = new Schema(
     },
     status: {
       type: String,
-      enum: AvailableTaskStatuses,
+      enum: AvailableTaskStatus,
       default: TaskStatusEnum.TODO,
     },
     attachments: {
@@ -46,11 +47,13 @@ const taskSchema = new Schema(
 );
 
 taskSchema.post("findOneAndDelete", async (task, next) => {
-  try {
-    await SubTask.deleteMany({ task: task._id });
-    next();
-  } catch (error) {
-    throw new ApiError(400, "Error while deleting subtasks of project");
+  if (task) {
+    try {
+      await SubTask.deleteMany({ task: task._id });
+      next();
+    } catch (error) {
+      throw new ApiError(400, "Error while deleting subtasks of project");
+    }
   }
 });
 

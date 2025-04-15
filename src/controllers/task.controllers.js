@@ -1,44 +1,8 @@
-import { ProjectMember } from "../models/projectmember.model.js";
 import { SubTask } from "../models/subtask.model.js";
 import { Task } from "../models/task.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
-import { TaskStatusEnum, UserRolesEnum } from "../utils/constants.js";
-
-async function checkIfAllowedToModifyOrCreateTask(userId, projectId) {
-  try {
-    const user = await ProjectMember.findOne({
-      project: projectId,
-      user: userId,
-      role: UserRolesEnum.ADMIN || UserRolesEnum.PROJECT_ADMIN,
-    });
-
-    if (!user) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    throw new ApiError(400, error);
-  }
-}
-
-async function checkIfMember(userId, projectId) {
-  try {
-    const member = await ProjectMember.findOne({
-      user: userId,
-      project: projectId,
-    });
-
-    if (!member) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    throw new ApiError(401, error);
-  }
-}
+import { TaskStatusEnum } from "../utils/constants.js";
 
 const createTask = async (req, res, next) => {
   const { projectId } = req.params;
@@ -49,21 +13,20 @@ const createTask = async (req, res, next) => {
     status = TaskStatusEnum.TODO,
   } = req.body;
 
-  const isAllowed = await checkIfAllowedToModifyOrCreateTask(
-    req.user._id,
-    projectId,
-  );
-
-  if (!isAllowed) {
-    return next(new ApiError(401, "You are not allowed to create a task"));
-  }
+  const attachments = req.files?.map((file) => ({
+    url: file.path,
+    mimetype: file.mimetype,
+    size: file.size,
+  }));
 
   const task = await Task.create({
     title,
     description,
+    project: projectId,
     assignedTo,
     assignedBy: req.user._id,
     status,
+    attachments,
   });
 
   if (!task) {
@@ -75,12 +38,6 @@ const createTask = async (req, res, next) => {
 
 const getTasks = async (req, res, next) => {
   const { projectId } = req.params;
-
-  const isMember = await checkIfMember(req.user._id, projectId);
-
-  if (!isMember) {
-    return next(new ApiError(401, "You are not a part of this project"));
-  }
 
   const tasks = await Task.find({
     project: projectId,
@@ -95,12 +52,6 @@ const getTasks = async (req, res, next) => {
 
 const getTaskById = async (req, res, next) => {
   const { projectId, taskId } = req.params;
-
-  const isMember = await checkIfMember(req.user._id, projectId);
-
-  if (!isMember) {
-    return next(new ApiError(401, "You are not a part of this project"));
-  }
 
   const task = await Task.findById(taskId).select("title");
 
@@ -120,14 +71,11 @@ const updateTask = async (req, res, next) => {
     status = TaskStatusEnum.TODO,
   } = req.body;
 
-  const isAllowed = await checkIfAllowedToModifyOrCreateTask(
-    req.user._id,
-    projectId,
-  );
-
-  if (!isAllowed) {
-    return next(new ApiError(401, "You are not allowed to update a task"));
-  }
+  const attachments = req.files?.map((file) => ({
+    url: file.path,
+    mimetype: file.mimetype,
+    size: file.size,
+  }));
 
   const task = await Task.findByIdAndUpdate(
     taskId,
@@ -137,6 +85,7 @@ const updateTask = async (req, res, next) => {
         description,
         assignedTo,
         status,
+        attachments
       },
     },
     {
@@ -154,15 +103,6 @@ const updateTask = async (req, res, next) => {
 const deleteTask = async (req, res, next) => {
   const { projectId, taskId } = req.params;
 
-  const isAllowed = await checkIfAllowedToModifyOrCreateTask(
-    req.user._id,
-    projectId,
-  );
-
-  if (!isAllowed) {
-    return next(new ApiError(401, "You are not allowed to delete a task"));
-  }
-
   const task = await Task.findByIdAndDelete(taskId);
 
   if (!task) {
@@ -175,15 +115,6 @@ const deleteTask = async (req, res, next) => {
 const createSubTask = async (req, res, next) => {
   const { projectId, taskId } = req.params;
   const { title } = req.body;
-
-  const isAllowed = await checkIfAllowedToModifyOrCreateTask(
-    req.user._id,
-    projectId,
-  );
-
-  if (!isAllowed) {
-    return next(new ApiError(401, "You are not allowed to create a task"));
-  }
 
   const subTask = await SubTask.create({
     title,
@@ -203,15 +134,6 @@ const createSubTask = async (req, res, next) => {
 const updateSubTask = async (req, res, next) => {
   const { projectId, subTaskId } = req.params;
   const { title, isCompleted } = req.body;
-
-  const isAllowed = await checkIfAllowedToModifyOrCreateTask(
-    req.user._id,
-    projectId,
-  );
-
-  if (!isAllowed) {
-    return next(new ApiError(401, "You are not allowed to update a task"));
-  }
 
   const subTask = await SubTask.findByIdAndUpdate(
     subTaskId,
@@ -242,15 +164,6 @@ const updateSubTask = async (req, res, next) => {
 
 const deleteSubTask = async (req, res, next) => {
   const { projectId, subTaskId } = req.params;
-
-  const isAllowed = await checkIfAllowedToModifyOrCreateTask(
-    req.user._id,
-    projectId,
-  );
-
-  if (!isAllowed) {
-    return next(new ApiError(401, "You are not allowed to delete a task"));
-  }
 
   const subTask = await SubTask.findByIdAndDelete(subTaskId);
 

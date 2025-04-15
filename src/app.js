@@ -21,7 +21,7 @@ app.use("/api/v1/projects/:projectId/notes", noteRoutes);
 app.use("/api/v1/projects/:projectId/tasks", taskRoutes);
 
 app.use((err, _req, res, _next) => {
-  const statusCode = err.statusCode || 500;
+  const statusCode = err.statusCode || 500;  
 
   res.status(statusCode).json({
     statusCode,

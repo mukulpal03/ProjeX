@@ -10,18 +10,33 @@ import {
 } from "../controllers/note.controllers.js";
 import { noteValidator } from "../validators/note.validator.js";
 import { validate } from "../middlewares/validator.middleware.js";
+import { isMember, isAdmin } from "../middlewares/permission.middleware.js";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 router
   .route("/")
-  .get(isLoggedIn, asyncHandler(getNotes))
-  .post(isLoggedIn, noteValidator(), validate, asyncHandler(createNote));
+  .get(isLoggedIn, isMember, asyncHandler(getNotes))
+  .post(
+    isLoggedIn,
+    isMember,
+    isAdmin,
+    noteValidator(),
+    validate,
+    asyncHandler(createNote),
+  );
 
 router
   .route("/:noteId")
-  .get(isLoggedIn, asyncHandler(getNoteById))
-  .put(isLoggedIn, noteValidator(), validate, asyncHandler(updateNote))
-  .delete(isLoggedIn, asyncHandler(deleteNote));
+  .get(isLoggedIn, isMember, asyncHandler(getNoteById))
+  .put(
+    isLoggedIn,
+    isMember,
+    isAdmin,
+    noteValidator(),
+    validate,
+    asyncHandler(updateNote),
+  )
+  .delete(isLoggedIn, isMember, isAdmin, asyncHandler(deleteNote));
 
 export default router;
