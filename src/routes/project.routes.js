@@ -21,38 +21,34 @@ import { isMember, isAdmin } from "../middlewares/permission.middleware.js";
 
 const router = Router();
 
+router.use(isLoggedIn);
+
+router
+  .route("/")
+  .post(ProjectValidator(), validate, asyncHandler(createProject))
+  .get(asyncHandler(getProjects));
+
+router.use("/:projectId", isMember);
+
 router
   .route("/:projectId/members")
   .post(
-    isLoggedIn,
-    isMember,
     isAdmin,
     addMemberValidator(),
     validate,
     asyncHandler(addMemberToProject),
   )
-  .get(isLoggedIn, isMember, asyncHandler(getProjectMembers));
+  .get(asyncHandler(getProjectMembers));
 
 router
   .route("/:projectId/members/:memberId")
-  .delete(isLoggedIn, isMember, isAdmin, asyncHandler(deleteMember))
-  .put(isLoggedIn, isMember, isAdmin, asyncHandler(updateMemberRole));
-
-router
-  .route("/")
-  .post(isLoggedIn, ProjectValidator(), validate, asyncHandler(createProject))
-  .get(isLoggedIn, asyncHandler(getProjects));
+  .delete(isAdmin, asyncHandler(deleteMember))
+  .put(isAdmin, asyncHandler(updateMemberRole));
 
 router
   .route("/:projectId")
-  .delete(isLoggedIn, isMember, isAdmin, asyncHandler(deleteProject))
-  .get(isLoggedIn, isMember, asyncHandler(getProjectById))
-  .put(
-    isLoggedIn,
-    isMember,
-    isAdmin,
-    ProjectValidator(),
-    validate,
-    asyncHandler(updateProject),
-  );
+  .delete(isAdmin, asyncHandler(deleteProject))
+  .get(asyncHandler(getProjectById))
+  .put(isAdmin, ProjectValidator(), validate, asyncHandler(updateProject));
+
 export default router;

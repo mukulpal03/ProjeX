@@ -15,7 +15,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,  
   params: {
-    folder: "projex/userAvatar", 
+    folder: "stratify/userAvatar", 
     allowed_formats: ["png", "jpg", "jpeg", "webp"], 
     public_id: (req, file) => {
       return `${req.body.username}-${Date.now()}`; 

@@ -74,6 +74,16 @@ const deleteMember = async (req, res, next) => {
     return next(new ApiError(400, "Invalid member id"));
   }
 
+  const member = await ProjectMember.findById(memberId);
+
+  if (!member) {
+    return next(new ApiError(404, "User is not a member of this project"));
+  }
+
+  if(member.role === UserRolesEnum.ADMIN) {
+    return next(new ApiError(400, "Admins cannot remove themselves"))
+  }
+
   await ProjectMember.findByIdAndDelete(memberId);
 
   res.status(200).json(new ApiResponse(200, "Member deleted successfully"));
@@ -136,6 +146,8 @@ const updateProject = async (req, res, next) => {
       name,
       description,
     },
+  }, {
+    $new: true
   });
 
   if (!project) {

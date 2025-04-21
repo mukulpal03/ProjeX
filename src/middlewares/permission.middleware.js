@@ -28,7 +28,7 @@ const isMember = async (req, _res, next) => {
     });
 
     if (!member) {
-      return next(new ApiError(401, "Access denied"));
+      return next(new ApiError(401, "Project not found"));
     }
 
     next();
@@ -37,7 +37,7 @@ const isMember = async (req, _res, next) => {
   }
 };
 
-const taskPermission = async (req, res, next) => {
+const taskPermission = async (req, _res, next) => {
   try {
     const user = await ProjectMember.findOne({
       project: req.params.projectId,

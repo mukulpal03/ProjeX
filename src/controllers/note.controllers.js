@@ -6,6 +6,12 @@ const createNote = async (req, res, next) => {
   const { projectId } = req.params;
   const { content } = req.body;
 
+  const existingNote = await ProjectNote.findOne({ content });
+
+  if (existingNote) {
+    return next(new ApiError(400, "Note with this name already exists"));
+  }
+
   const note = await ProjectNote.create({
     project: projectId,
     createdBy: req.user._id,

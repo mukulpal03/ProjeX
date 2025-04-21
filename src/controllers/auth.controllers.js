@@ -34,7 +34,7 @@ const registerUser = async (req, res, next) => {
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
-    return next(new ApiError(409, "User already exists"));
+    return next(new ApiError(409, "Email already exists"));
   }
 
   const user = await User.create({
@@ -88,13 +88,15 @@ const verifyUser = async (req, res, next) => {
     },
   });
 
+  if (user.isEmailVerified) {
+    return res.status(200).json(new ApiResponse(200, "User already verified"));
+  }
+
   if (!user) {
-    return next(new ApiError(401, "Invalid Token"));
+    return next(new ApiError(401, "Invalid or expired verification token"));
   }
 
   user.isEmailVerified = true;
-  user.emailVerificationToken = undefined;
-  user.emailVerificationExpiry = undefined;
 
   await user.save();
 
@@ -199,6 +201,10 @@ const resendEmailVerification = async (req, res, next) => {
     return next(new ApiError(401, "Unauthorized access"));
   }
 
+  if (user.isEmailVerified) {
+    return next(new ApiError(200, "User already verified"));
+  }
+
   const { hashedToken, unHashedToken, tokenExpiry } =
     user.generateTemporaryToken();
 
@@ -223,7 +229,20 @@ const forgotPasswordReq = async (req, res, next) => {
   const user = await User.findOne({ email }).select("-password -refreshToken");
 
   if (!user) {
-    return next(new ApiError(401, "User not found"));
+    return next(
+      new ApiError(
+        401,
+        "If this email is registered, a reset link will be sent",
+      ),
+    );
+  }
+
+  if (!user.isEmailVerified) {
+    return next(new ApiError(403, "Please verify your email"));
+  }
+
+  if (user.forgotPasswordToken && user.forgotPasswordExpiry > Date.now()) {
+    return next(new ApiError(400, "Reset password mail already sent"));
   }
 
   const { hashedToken, unHashedToken, tokenExpiry } =
@@ -286,7 +305,36 @@ const userProfile = async (req, res) => {
   );
 };
 
-const changeCurrentPassword = async (req, res, next) => {};
+const changeCurrentPassword = async (req, res, next) => {
+  const loggedUser = req.user;
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  const isMatch = await user.isPasswordCorrect(currentPassword);
+
+  if (!isMatch) {
+    return next(new ApiError(400, "Current password is incorrect"));
+  }
+
+  if (newPassword === currentPassword) {
+    return next(new ApiError(400, "New password must be different from current password"));
+  }
+
+  if (newPassword !== confirmPassword) {
+    return next(new ApiError(400, "Password doesn't match"));
+  }
+
+  const user = await User.findByIdAndUpdate(loggedUser._id, {
+    $set: {
+      password: newPassword,
+    },
+  });
+
+  if (!user) {
+    return next(new ApiError(400, "Password change failed"));
+  }
+
+  res.status(200).json(new ApiResponse(200, "Password changed successfully"));
+};
 
 export {
   registerUser,

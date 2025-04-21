@@ -14,29 +14,19 @@ import { isMember, isAdmin } from "../middlewares/permission.middleware.js";
 
 const router = Router({ mergeParams: true });
 
+router.use(isLoggedIn);
+
+router.use("/:noteId", isMember);
+
 router
   .route("/")
-  .get(isLoggedIn, isMember, asyncHandler(getNotes))
-  .post(
-    isLoggedIn,
-    isMember,
-    isAdmin,
-    noteValidator(),
-    validate,
-    asyncHandler(createNote),
-  );
+  .get(asyncHandler(getNotes))
+  .post(isAdmin, noteValidator(), validate, asyncHandler(createNote));
 
 router
   .route("/:noteId")
-  .get(isLoggedIn, isMember, asyncHandler(getNoteById))
-  .put(
-    isLoggedIn,
-    isMember,
-    isAdmin,
-    noteValidator(),
-    validate,
-    asyncHandler(updateNote),
-  )
-  .delete(isLoggedIn, isMember, isAdmin, asyncHandler(deleteNote));
+  .get(asyncHandler(getNoteById))
+  .put(isAdmin, noteValidator(), validate, asyncHandler(updateNote))
+  .delete(isAdmin, asyncHandler(deleteNote));
 
 export default router;

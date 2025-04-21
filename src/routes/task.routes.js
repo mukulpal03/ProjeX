@@ -24,12 +24,12 @@ import {
 
 const router = Router({ mergeParams: true });
 
+router.use(isLoggedIn, isMember);
+
 router
   .route("/")
-  .get(isLoggedIn, isMember, asyncHandler(getTasks))
+  .get(asyncHandler(getTasks))
   .post(
-    isLoggedIn,
-    isMember,
     taskPermission,
     upload.array("attachments", 5),
     taskValidator(),
@@ -39,23 +39,19 @@ router
 
 router
   .route("/:taskId")
-  .get(isLoggedIn, isMember, asyncHandler(getTaskById))
+  .get(asyncHandler(getTaskById))
   .put(
-    isLoggedIn,
-    isMember,
     taskPermission,
     upload.array("attachments", 5),
     taskValidator(),
     validate,
     asyncHandler(updateTask),
   )
-  .delete(isLoggedIn, isMember, taskPermission, asyncHandler(deleteTask));
+  .delete(taskPermission, asyncHandler(deleteTask));
 
 router
   .route("/:taskId/subtasks")
   .post(
-    isLoggedIn,
-    isMember,
     taskPermission,
     subTaskValidator(),
     validate,
@@ -65,13 +61,11 @@ router
 router
   .route("/:taskId/subtasks/:subTaskId")
   .put(
-    isLoggedIn,
-    isMember,
     taskPermission,
     subTaskValidator(),
     validate,
     asyncHandler(updateSubTask),
   )
-  .delete(isLoggedIn, isMember, taskPermission, asyncHandler(deleteSubTask));
+  .delete(taskPermission, asyncHandler(deleteSubTask));
 
 export default router;
