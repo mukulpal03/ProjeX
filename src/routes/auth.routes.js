@@ -22,23 +22,25 @@ import {
 } from "../validators/user.validator.js";
 import isLoggedIn from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
+import { authLimitter } from "../middlewares/limitter.middleware.js";
 
 const router = Router();
 
 router
   .route("/register")
   .post(
+    authLimitter,
     upload.single("avatar"),
     userRegistrationValidator(),
     validate,
     asyncHandler(registerUser),
   );
 
-router.route("/verify/:token").post(asyncHandler(verifyUser));
+router.route("/verify/:token").post(authLimitter, asyncHandler(verifyUser));
 
 router
   .route("/login")
-  .post(userLoginValidator(), validate, asyncHandler(loginUser));
+  .post(authLimitter, userLoginValidator(), validate, asyncHandler(loginUser));
 
 router.route("/logout").post(isLoggedIn, asyncHandler(logoutUser));
 
@@ -52,11 +54,11 @@ router
 
 router
   .route("/forgot-password")
-  .get(forgotPassValidator(), validate, asyncHandler(forgotPasswordReq));
+  .get(authLimitter, forgotPassValidator(), validate, asyncHandler(forgotPasswordReq));
 
 router
   .route("/reset-password/:token")
-  .post(resetPassValidator(), validate, asyncHandler(resetPassword));
+  .post(authLimitter, resetPassValidator(), validate, asyncHandler(resetPassword));
 
 router
   .route("/change-password")
